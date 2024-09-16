@@ -1,0 +1,105 @@
+#include <Wire.h> 
+#include <ESP8266WiFi.h>
+#include <LiquidCrystal_I2C.h>
+#include <ThingSpeak.h>
+
+LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+ 
+const int currentPin = A0;
+int sensitivity = 100;
+int adcValue= 0;
+
+int offsetVoltage = 2500;
+double adcVoltage = 0;
+double currentValue = 0;
+
+  float r_voltage;
+  float r_current;
+  float power;
+  
+   WiFiClient client;
+  long myChannelNumber = 2000219;
+  const char myWriteAPIKey[] = "UUHW9GLCHW484D4Q";
+
+
+void setup() 
+{
+
+  //  setup code for connect NodeMCU to WIFI:
+  Serial.begin(9600);
+  WiFi.begin("realme 8", "shimul111");
+  while(WiFi.status() != WL_CONNECTED)
+  {
+    delay(200);
+    Serial.print("..");
+  }
+  Serial.println();
+  Serial.println("NodeMCU is connected!");
+  Serial.println(WiFi.localIP());
+  ThingSpeak.begin(client);
+
+  
+   lcd.init();   // initialize the lcd 
+  // Print a message to the LCD.
+  lcd.backlight();
+  
+  Serial.begin(9600);
+  Wire.begin (D2, D1);
+  lcd.begin(16, 2);
+  lcd.print(" Solar Tracker ");
+    lcd.setCursor(0,1);
+  lcd.print("Made By Shimul ");
+  delay(2000);
+}
+ 
+void loop()
+{
+   adcValue = analogRead(currentPin);
+   adcVoltage = (adcValue / 1024.0) * 5000;
+   currentValue = fabs(((adcVoltage - offsetVoltage) / sensitivity));
+  lcd.clear();
+ delay(1000);
+  
+  r_voltage = adcVoltage / 1000;
+  r_current = currentValue*1000;
+  power = (r_voltage * currentValue)*1000;
+
+  Serial.print("\t Voltage(V) = ");
+  Serial.print(r_voltage,3);
+  
+  lcd.setCursor(0,0);
+  lcd.print("Voltage =");
+  lcd.setCursor(10,0);
+  lcd.print(r_voltage,1);
+  lcd.setCursor(15,0);
+  lcd.print("V");
+  delay(2000);
+ 
+  Serial.print("\t Current = ");
+  Serial.println(currentValue,3);
+ 
+  lcd.setCursor(0,0);
+  lcd.print("Current =       ");
+  lcd.setCursor(10,0);
+  lcd.print(currentValue,2);
+  lcd.setCursor(14,0);
+  lcd.print("mA");
+   delay(2000);
+ 
+  Serial.print("\t Power = ");
+  Serial.println(power,3);
+ 
+  lcd.setCursor(0,0);
+  lcd.print("Power =");
+  lcd.setCursor(8,0);
+  lcd.print(power);
+  lcd.setCursor(14,0);
+  lcd.print("mW");
+  delay(2000);
+
+
+  ThingSpeak.writeField(myChannelNumber, 1, r_voltage, myWriteAPIKey);
+  ThingSpeak.writeField(myChannelNumber, 2, r_current, myWriteAPIKey);
+  ThingSpeak.writeField(myChannelNumber, 3, power, myWriteAPIKey); 
+
+ }
